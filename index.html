@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eikonal quasinormal modes at the Schwarzschild light ring</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]})"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; color: #d8dee9; font: 14px/1.45 system-ui, sans-serif; overflow: hidden; }
+  #view { position: absolute; inset: 0 380px 0 0; }
+  #side { position: absolute; top: 0; right: 0; bottom: 0; width: 380px; overflow-y: auto; box-sizing: border-box;
+          padding: 12px 16px; background: #0d1117; border-left: 1px solid #222a35; }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tabs button { flex: 1; padding: 6px 4px; background: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; cursor: pointer; }
+  .tabs button.on { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .ctl { margin: 6px 0; }
+  .ctl label { display: flex; justify-content: space-between; font-size: 12.5px; color: #9aa5b1; }
+  .ctl input[type=range] { width: 100%; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: #9aa5b1; }
+  .panelctl { display: none; } .panelctl.on { display: block; }
+  .txt { font-size: 13px; color: #c3ccd6; } .txt p { margin: 6px 0; }
+  #hud { position: absolute; left: 10px; top: 8px; font: 12px/1.4 ui-monospace, monospace; color: #9aa5b1; pointer-events: none; white-space: pre; }
+  #legend { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #9aa5b1; pointer-events: none; }
+  .sw { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 4px 0 10px; }
+  hr { border: 0; border-top: 1px solid #222a35; margin: 10px 0; }
+  @media (max-width: 800px) { #view { inset: 0 0 45% 0; } #side { top: 55%; width: 100%; border-left: 0; border-top: 1px solid #222a35; } }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div id="hud"></div>
+<div id="legend"></div>
+<div id="side">
+  <h1>Eikonal quasinormal modes at the Schwarzschild light ring</h1>
+  <div class="tabs">
+    <button data-p="bundle" class="on">1 · Bundle</button>
+    <button data-p="ring">2 · Ring</button>
+    <button data-p="spin2">3 · Spin 2</button>
+  </div>
+
+  <div class="ctl"><label>speed <span id="v-speed"></span></label><input id="speed" type="range" min="0" max="3" step="0.01" value="1"></div>
+  <div class="row"><label><input id="pause" type="checkbox"> pause</label>
+    <label><input id="physfade" type="checkbox" checked> physical fading $e^{-\lambda t/2}$</label></div>
+  <div class="ctl"><label>new bundle every $T$ (orbits) <span id="v-T"></span></label><input id="T" type="range" min="0.05" max="0.5" step="0.01" value="0.25"></div>
+  <div class="ctl"><label>bundles alive at once <span id="v-K"></span></label><input id="K" type="range" min="1" max="6" step="1" value="2"></div>
+  <div class="ctl"><label>trail length (orbits) <span id="v-trail"></span></label><input id="trail" type="range" min="0.02" max="1.5" step="0.01" value="0.35"></div>
+
+  <div id="c-bundle" class="panelctl on">
+    <div class="ctl"><label>initial bundle radius $w_0$ [$M$] <span id="v-w0"></span></label><input id="w0" type="range" min="0.005" max="0.3" step="0.005" value="0.1"></div>
+  </div>
+  <div id="c-ring" class="panelctl">
+    <div class="ctl"><label>inclination $\iota$ (deg; 90 = all rays head north) <span id="v-inc"></span></label><input id="inc" type="range" min="0" max="90" step="1" value="90"></div>
+    <div class="ctl"><label>radial spread $\epsilon$ [$M$] <span id="v-eps"></span></label><input id="eps" type="range" min="0" max="0.2" step="0.005" value="0.04"></div>
+    <div class="ctl"><label>number of rays on the ring <span id="v-ng"></span></label><input id="ng" type="range" min="8" max="96" step="4" value="48"></div>
+  </div>
+  <div id="c-spin2" class="panelctl">
+    <div class="ctl"><label>$\ell = m$ <span id="v-ell"></span></label><input id="ell" type="range" min="2" max="40" step="1" value="10"></div>
+    <div class="ctl"><label>strain amplitude (drawn, exaggerated) <span id="v-amp"></span></label><input id="amp" type="range" min="0" max="0.8" step="0.01" value="0.45"></div>
+    <div class="row">polarization:
+      <label><input type="radio" name="pol" value="plus" checked> $+$</label>
+      <label><input type="radio" name="pol" value="cross"> $\times$</label>
+      <label><input type="radio" name="pol" value="circ"> circular</label></div>
+    <div class="row"><label><input id="showbundle" type="checkbox" checked> show ray bundle (background optics)</label></div>
+    <div class="ctl"><label>initial bundle radius $w_0$ [$M$] <span id="v-w0b"></span></label><input id="w0b" type="range" min="0.005" max="0.3" step="0.005" value="0.1"></div>
+  </div>
+  <hr>
+  <div id="t-bundle" class="txt panelctl on">
+    <p>Each line is a Schwarzschild null geodesic ($M=1$), integrated exactly. The rays start near the equatorial light ring $r=3M$, parallel to it, on a small disk of radius $w_0$. The closed loops are the bundle's cross-section on a slice of constant Schwarzschild time $t$.</p>
+    <p><b>Radial direction: unstable.</b> Offsets grow as $\delta r\propto e^{\lambda t}$, with $\lambda=\Omega=1/(3\sqrt3 M)$: a factor $e^{2\pi}\approx 535$ per orbit. Rays outside the ring escape; rays inside fall towards the horizon (they freeze there in Schwarzschild $t$).</p>
+    <p><b>Out-of-plane direction: neutral.</b> A neighbouring ray lies on a tilted great circle of the same sphere. The bundle therefore focuses to a radial line a quarter orbit after it starts, and every half orbit after that.</p>
+    <p><b>Repeating bundles.</b> Near the ring the flow is linear and symmetric under rotation, so the bundle at $t+T$ is the bundle at $t$, rotated by $\Omega T$ and stretched by $e^{\lambda T}$. So, after each interval $T$ a fresh copy of the original bundle starts, while the older one keeps growing and fades.</p>
+    <p><b>Fading = damping.</b> The cross-section area grows as $e^{\lambda t}$. Flux conservation then gives an amplitude $\propto e^{-\lambda t/2}$: the decay rate $\lvert\mathrm{Im}\,\omega\rvert=\lambda/2$ of the fundamental mode.</p>
+  </div>
+  <div id="t-ring" class="txt panelctl">
+    <p>Rays start on a great circle of the photon sphere $r=3M$ (the equator). All of them have orbital planes tilted by $\iota$ from the equatorial plane. Each ray has radial neighbours at $r=3M\pm\epsilon$ (orange outside, blue inside), which peel away exponentially. Loops join the heads of the rays.</p>
+    <p>$\iota=90^\circ$: every ray heads north along a meridian. The ring shrinks to a point at the north pole, comes back out through the equator, focuses at the south pole, and repeats. This is the ray picture of an $m=0$ mode; the caustics at the poles match the peaks of $Y_{\ell 0}$ there.</p>
+    <p>In general a mode $(\ell,m)$ corresponds to planes with $\cos\iota = m/(\ell+\tfrac12)$. Its rays fill the band of latitudes $\lvert\pi/2-\theta\rvert\le\iota$, with caustics at its edges. $\iota=0$ is the equatorial $\ell=m$ mode.</p>
+  </div>
+  <div id="t-spin2" class="txt panelctl">
+    <p><b>The rays are the same.</b> At leading eikonal order, scalar, electromagnetic and gravitational waves follow the same null geodesics, and the quasinormal-mode frequencies agree: $\omega\approx\Omega(\ell+\tfrac12)-i\lambda(n+\tfrac12)$. Spin-dependent deviations from the geodesics (the gravitational spin Hall effect) enter at first order in wavelength$/M$, roughly $1/\ell$.</p>
+    <p><b>The strain is transverse to the ray.</b> In geometric optics $h_{ab}=\mathcal{A}\,e_{ab}\,e^{i\Psi}$ with $e_{ab}k^b=0$, and the polarization tensor is parallel-transported along the ray. The condition for this is wavelength $\ll M$, i.e. $\ell\gg1$; distance from the hole does not enter. For a planar orbit, the reflection symmetry keeps one polarization axis along $\hat\theta$, normal to the orbital plane, and the other along $\hat r$. So the axes do not rotate around the orbit.</p>
+    <p><b>What is drawn.</b> Rings of free test particles held by static observers on the light ring, in the plane $(\hat r,\hat\theta)$ perpendicular to the propagation direction $\hat\phi$. They are deformed by $h_{+}$, $h_{\times}$ of the mode $e^{i(m\phi-\omega t)}$; magenta = stretched along $\hat r$, green = stretched along $\hat\theta$ (for $\times$, the two diagonals). The pattern moves around the ring at the light-ring angular speed. The envelope across latitude follows $\lvert Y_{\ell\ell}\rvert\propto\sin^{\ell}\theta$. The amplitude is drawn without the slow decay $e^{-\lambda t/2}$. Cyan: the ray bundle. Its own change of shape (radial stretching, out-of-plane focusing) is <i>background</i> optics, not the wave's strain.</p>
+    <p><b>Finite $\ell$.</b> For $\ell=2$, $M\omega=0.374-0.089i$, the reduced wavelength is $\approx2.7M$. $r=3M$ is then at the outer edge of the near zone (Nichols et al. 2012, arXiv:1208.3038). The tidal field there has longitudinal parts of order one, and this ray picture is only qualitative.</p>
+  </div>
+  <hr>
+  <div class="txt"><p style="font-size:12px;color:#7d8590">Coordinates $(r,\theta,\phi)$ are drawn as Euclidean spherical coordinates. Black sphere: horizon $r=2M$. Faint sphere: photon sphere $r=3M$. Drag to rotate, scroll to zoom.</p></div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
